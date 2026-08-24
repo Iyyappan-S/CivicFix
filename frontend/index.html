@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicFix - Smart Civic Issue Reporting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .hero {
+            text-align: center;
+            padding: 8rem 20px;
+            background: linear-gradient(135deg, var(--dark), #1e293b);
+            color: var(--white);
+        }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 1.5rem; font-weight: 800; }
+        .hero p { font-size: 1.2rem; color: #cbd5e1; max-width: 600px; margin: 0 auto 2.5rem; }
+        .hero .btn { margin: 0 10px; }
+        
+        .features { padding: 5rem 0; text-align: center; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 3rem; }
+        .feature-card { padding: 2rem; }
+        .feature-card h3 { margin-bottom: 1rem; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="logo">CivicFix</a>
+            <div class="nav-links">
+                <a href="login.html" class="btn">Login</a>
+                <a href="register.html" class="btn btn-primary">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container">
+            <h1>Report. Track. Resolve.</h1>
+            <p>A smart platform for citizens to report civic issues and for authorities to resolve them efficiently.</p>
+            <a href="register.html" class="btn btn-primary">REPORT AN ISSUE</a>
+            <a href="login.html" class="btn btn-secondary">TRACK A COMPLAINT</a>
+        </div>
+    </header>
+
+    <section class="features container">
+        <h2>How CivicFix Works</h2>
+        <div class="features-grid">
+            <div class="card feature-card">
+                <h3>1. Report</h3>
+                <p>Citizens spot an issue, take a photo, add location, and submit a complaint easily.</p>
+            </div>
+            <div class="card feature-card">
+                <h3>2. Assign</h3>
+                <p>Admins verify the issue and assign it to the correct department and officer.</p>
+            </div>
+            <div class="card feature-card">
+                <h3>3. Resolve</h3>
+                <p>Officers fix the issue, upload proof, and citizens get notified immediately.</p>
+            </div>
+        </div>
+    </section>
+
+</body>
+</html>

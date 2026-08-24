@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Officer Dashboard - CivicFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .tables-container {
+            margin-top: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .bg-pending {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .bg-resolved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .bg-inprogress {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h2>CivicFix Officer</h2>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html" class="active">Assigned Issues</a></li>
+                <li><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>Assigned Complaints</h1>
+                <div id="user-info"></div>
+            </header>
+
+            <div class="tables-container card" style="padding: 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Priority</th>
+                            <th>Title</th>
+                            <th>Address</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="complaints-list">
+                        <tr>
+                            <td colspan="6" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Status Update Modal -->
+    <div id="status-modal" class="card"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1000; width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        <h3>Update Status <span id="status-code"></span></h3>
+        <input type="hidden" id="status-id">
+        <div class="form-group" style="margin-top:1rem;">
+            <label>New Status</label>
+            <select id="modal-status" class="form-control" required>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-top:1rem;">
+            <label>Notes</label>
+            <textarea id="modal-note" class="form-control"></textarea>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:1.5rem;">
+            <button onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="submitStatus()" class="btn btn-primary">Update</button>
+        </div>
+    </div>
+    <div id="overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999;">
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '../login.html';
+        });
+
+        async function loadComplaints() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                if (!user || user.role !== 'OFFICER') window.location.href = '../login.html';
+                document.getElementById('user-info').innerText = `Officer: ${user.name}`;
+
+                const compRes = await API.getComplaints(); // Backend filters for Officer
+                let html = '';
+                if (compRes.data.length === 0) {
+                    html = `<tr><td colspan="6" style="text-align:center;">No assigned complaints found.</td></tr>`;
+                }
+                compRes.data.forEach(c => {
+                    let statusClass = 'bg-pending';
+                    if (c.status === 'RESOLVED') statusClass = 'bg-resolved';
+                    if (c.status === 'IN_PROGRESS') statusClass = 'bg-inprogress';
+
+                    html += `
+                        <tr>
+                            <td><strong>${c.complaint_code}</strong></td>
+                            <td>${c.priority || 'MEDIUM'}</td>
+                            <td>${c.title}</td>
+                            <td>${c.address || 'Map Pin'}</td>
+                            <td><span class="badge ${statusClass}">${c.status}</span></td>
+                            <td>
+                                <button onclick="openStatusModal('${c.id}', '${c.complaint_code}')" class="btn btn-primary" style="padding: 0.5rem; font-size: 0.8rem;" ${c.status === 'RESOLVED' ? 'disabled' : ''}>Update</button>
+                                <a href="../complaint-details.html?id=${c.id}" class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.8rem;">View</a>
+                            </td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('complaints-list').innerHTML = html;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        loadComplaints();
+
+        function openStatusModal(id, code) {
+            document.getElementById('status-id').value = id;
+            document.getElementById('status-code').innerText = code;
+            document.getElementById('status-modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+        function closeModal() {
+            document.getElementById('status-modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+        async function submitStatus() {
+            const id = document.getElementById('status-id').value;
+            const data = {
+                status: document.getElementById('modal-status').value,
+                note: document.getElementById('modal-note').value
+            };
+            try {
+                await API.updateStatus(id, data);
+                alert('Status updated successfully');
+                closeModal();
+                loadComplaints();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

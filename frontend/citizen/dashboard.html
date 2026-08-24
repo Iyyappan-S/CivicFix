@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Citizen Dashboard - CivicFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .tables-container {
+            margin-top: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .bg-pending {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .bg-resolved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h2>CivicFix</h2>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html" class="active">Dashboard</a></li>
+                <li><a href="report.html">Report Issue</a></li>
+                <li><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>My Complaints</h1>
+                <a href="report.html" class="btn btn-primary">Report an Issue</a>
+            </header>
+
+            <div class="tables-container card" style="padding: 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="complaints-list">
+                        <tr>
+                            <td colspan="5" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '../login.html';
+        });
+
+        async function init() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                if (!user || user.role !== 'CITIZEN') window.location.href = '../login.html';
+
+                const compRes = await API.getComplaints(); // Auto-filtered for Citizen in backend
+                let html = '';
+                if (compRes.data.length === 0) {
+                    html = `<tr><td colspan="5" style="text-align:center; padding: 2rem;">No complaints registered yet. <a href="report.html">Report one here.</a></td></tr>`;
+                }
+                compRes.data.forEach(c => {
+                    const statusClass = c.status === 'RESOLVED' ? 'bg-resolved' : 'bg-pending';
+                    const d = new Date(c.created_at).toLocaleDateString();
+                    html += `
+                        <tr>
+                            <td>${c.complaint_code}</td>
+                            <td>${c.title}</td>
+                            <td>${c.category_name}</td>
+                            <td>${d}</td>
+                            <td><span class="badge ${statusClass}">${c.status}</span></td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('complaints-list').innerHTML = html;
+            } catch (err) {
+                console.error(err);
+                if (err.message.includes('token') || err.message.includes('Unauthorized')) {
+                    window.location.href = '../login.html';
+                }
+            }
+        }
+        init();
+    </script>
+</body>
+
+</html>

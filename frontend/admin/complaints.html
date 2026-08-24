@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>All Complaints - Admin - CivicFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .tables-container {
+            margin-top: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .bg-pending {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .bg-resolved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h2>CivicFix Admin</h2>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="complaints.html" class="active">All Complaints</a></li>
+                <li><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2rem;">
+                <h1>All Complaints</h1>
+            </header>
+
+            <div class="filters">
+                <select id="filter-status" class="form-control" style="width: 200px;">
+                    <option value="">All Statuses</option>
+                    <option value="SUBMITTED">Submitted</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="RESOLVED">Resolved</option>
+                </select>
+                <button onclick="loadComplaints()" class="btn btn-primary">Filter</button>
+            </div>
+
+            <div class="tables-container card" style="padding: 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="complaints-list">
+                        <tr>
+                            <td colspan="5" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Assignment Modal (Simple Implementation) -->
+    <div id="assign-modal" class="card"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1000; width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        <h3>Assign Complaint <span id="assign-code"></span></h3>
+        <input type="hidden" id="assign-id">
+        <div class="form-group" style="margin-top:1rem;">
+            <label>Department</label>
+            <select id="modal-dept" class="form-control" required></select>
+        </div>
+        <div class="form-group">
+            <label>Officer</label>
+            <select id="modal-officer" class="form-control" required></select>
+        </div>
+        <div class="form-group">
+            <label>Priority</label>
+            <select id="modal-priority" class="form-control">
+                <option value="LOW">Low</option>
+                <option value="MEDIUM" selected>Medium</option>
+                <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
+            </select>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:1.5rem;">
+            <button onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="submitAssignment()" class="btn btn-primary">Assign</button>
+        </div>
+    </div>
+    <div id="overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999;">
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '../login.html';
+        });
+
+        async function loadComplaints() {
+            const status = document.getElementById('filter-status').value;
+            const res = await API.getComplaints(status ? `?status=${status}` : '');
+            let html = '';
+            if (res.data.length === 0) {
+                html = `<tr><td colspan="5" style="text-align:center;">No complaints found.</td></tr>`;
+            }
+            res.data.forEach(c => {
+                const statusClass = c.status === 'RESOLVED' ? 'bg-resolved' : 'bg-pending';
+                html += `
+                    <tr>
+                        <td>${c.complaint_code}</td>
+                        <td>${c.title}</td>
+                        <td>${c.category_name}</td>
+                        <td><span class="badge ${statusClass}">${c.status}</span></td>
+                        <td>
+                            <button onclick="openAssignModal('${c.id}', '${c.complaint_code}')" class="btn btn-secondary" style="padding: 0.5rem; font-size: 0.8rem;">Assign</button>
+                            <a href="../complaint-details.html?id=${c.id}" class="btn btn-primary" style="padding: 0.5rem; font-size: 0.8rem;">View</a>
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('complaints-list').innerHTML = html;
+        }
+
+        async function init() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                if (!user || user.role !== 'ADMIN') window.location.href = '../login.html';
+
+                loadComplaints();
+
+                // Load departments and officers for modal
+                const deptRes = await API.getDepartments();
+                const offRes = await fetchAPI('/users/officers'); // created earlier
+
+                let deptHtml = '<option value="">Select Dept</option>';
+                deptRes.data.forEach(d => deptHtml += `<option value="${d.id}">${d.name}</option>`);
+                document.getElementById('modal-dept').innerHTML = deptHtml;
+
+                let offHtml = '<option value="">Select Officer</option>';
+                offRes.data.forEach(o => offHtml += `<option value="${o.id}">${o.name}</option>`);
+                document.getElementById('modal-officer').innerHTML = offHtml;
+
+            } catch (e) { }
+        }
+        init();
+
+        function openAssignModal(id, code) {
+            document.getElementById('assign-id').value = id;
+            document.getElementById('assign-code').innerText = code;
+            document.getElementById('assign-modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+        function closeModal() {
+            document.getElementById('assign-modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+        async function submitAssignment() {
+            const id = document.getElementById('assign-id').value;
+            const data = {
+                department_id: document.getElementById('modal-dept').value,
+                officer_id: document.getElementById('modal-officer').value,
+                priority: document.getElementById('modal-priority').value
+            };
+            if (!data.department_id || !data.officer_id) return alert('Select department and officer');
+            try {
+                await API.assignComplaint(id, data);
+                alert('Assigned successfully');
+                closeModal();
+                loadComplaints();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

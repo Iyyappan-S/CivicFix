@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login - CivicFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .auth-container {
+            max-width: 400px;
+            margin: 4rem auto;
+        }
+
+        .error {
+            color: var(--danger);
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container auth-container card">
+        <h2 style="text-align: center; margin-bottom: 2rem; color: var(--primary);">Login to CivicFix</h2>
+        <div id="error-msg" class="error"></div>
+        <form id="login-form">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+        </form>
+        <p style="text-align: center; margin-top: 1.5rem;">Don't have an account? <a href="register.html">Register
+                here</a></p>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            try {
+                errorMsg.innerText = 'Log in...';
+                const res = await API.login({ email, password });
+                localStorage.setItem('token', res.data.token);
+                localStorage.setItem('user', JSON.stringify(res.data.user));
+
+                if (res.data.user.role === 'ADMIN') window.location.href = 'admin/dashboard.html';
+                else if (res.data.user.role === 'OFFICER') window.location.href = 'officer/dashboard.html';
+                else window.location.href = 'citizen/dashboard.html';
+            } catch (err) {
+                errorMsg.innerText = err.message;
+            }
+        });
+    </script>
+</body>
+
+</html>

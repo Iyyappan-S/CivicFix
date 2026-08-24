@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - CivicFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .tables-container {
+            margin-top: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .bg-pending {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .bg-resolved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h2>CivicFix Admin</h2>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html" class="active">Dashboard</a></li>
+                <li><a href="complaints.html">All Complaints</a></li>
+                <li><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>Dashboard Overview</h1>
+                <div id="user-info"></div>
+            </header>
+
+            <div class="stats-grid" id="stats">
+                <div class="card stat-card">
+                    <h3>-</h3>
+                    <p>Total Complaints</p>
+                </div>
+                <div class="card stat-card">
+                    <h3>-</h3>
+                    <p>Pending Complaints</p>
+                </div>
+                <div class="card stat-card">
+                    <h3>-</h3>
+                    <p>Resolved</p>
+                </div>
+                <div class="card stat-card">
+                    <h3>-</h3>
+                    <p>Active Officers</p>
+                </div>
+            </div>
+
+            <div class="tables-container">
+                <h3>Recent Complaints</h3>
+                <br>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="complaints-list">
+                        <tr>
+                            <td colspan="5" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '../login.html';
+        });
+
+        async function init() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                if (!user || user.role !== 'ADMIN') window.location.href = '../login.html';
+                document.getElementById('user-info').innerText = `Welcome, ${user.name}`;
+
+                // Set Stats
+                const statsRes = await API.getAnalyticsOverview();
+                const s = statsRes.data;
+                const statsHtml = `
+                    <div class="card stat-card"><h3>${s.totalComplaints}</h3><p>Total Complaints</p></div>
+                    <div class="card stat-card"><h3>${s.pendingComplaints}</h3><p>Pending</p></div>
+                    <div class="card stat-card"><h3>${s.resolvedComplaints}</h3><p>Resolved</p></div>
+                    <div class="card stat-card"><h3>${s.activeOfficers}</h3><p>Active Officers</p></div>
+                `;
+                document.getElementById('stats').innerHTML = statsHtml;
+
+                // Load Complaints
+                const compRes = await API.getComplaints(); // All for admin
+                let html = '';
+                // Just show top 5 in dash
+                const recent = compRes.data.slice(0, 5);
+                if (recent.length === 0) {
+                    html = `<tr><td colspan="5" style="text-align:center;">No complaints found.</td></tr>`;
+                }
+                recent.forEach(c => {
+                    const statusClass = c.status === 'RESOLVED' ? 'bg-resolved' : 'bg-pending';
+                    html += `
+                        <tr>
+                            <td>${c.complaint_code}</td>
+                            <td>${c.title}</td>
+                            <td>${c.category_name}</td>
+                            <td><span class="badge ${statusClass}">${c.status}</span></td>
+                            <td><a href="complaint-details.html?id=${c.id}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">View</a></td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('complaints-list').innerHTML = html;
+            } catch (err) {
+                console.error(err);
+                if (err.message.includes('token') || err.message.includes('Unauthorized')) {
+                    window.location.href = '../login.html';
+                }
+            }
+        }
+        init();
+    </script>
+</body>
+
+</html>

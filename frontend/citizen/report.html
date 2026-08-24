@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Report Issue - CivicFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        .form-section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #map {
+            height: 300px;
+            margin-bottom: 1.5rem;
+            border-radius: var(--radius);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h2>CivicFix</h2>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="report.html" class="active">Report Issue</a></li>
+                <li><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2rem;">
+                <h1>Report a New Issue</h1>
+            </header>
+
+            <div class="card form-section">
+                <form id="report-form">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="category_id" class="form-control" required>
+                            <option value="">Select Category...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="title" class="form-control"
+                            placeholder="E.g. Large pothole on main street" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="description" class="form-control" placeholder="Provide more details..."
+                            required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Location (Pinpoint on map)</label>
+                        <div id="map"></div>
+                        <p style="font-size: 0.8rem; color: var(--gray);">Drag the marker to the exact issue location.
+                        </p>
+                        <input type="hidden" id="lat">
+                        <input type="hidden" id="lng">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Address manually (Optional)</label>
+                        <input type="text" id="address" class="form-control" placeholder="123 Main St">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Images (Optional)</label>
+                        <input type="file" id="images" class="form-control" multiple accept="image/*">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Complaint</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="../js/api.js"></script>
+    <script>
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '../login.html';
+        });
+
+        // Initialize Map
+        const map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India approx
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let marker = L.marker([20.5937, 78.9629], { draggable: true }).addTo(map);
+
+        // Try precise location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                const { latitude, longitude } = pos.coords;
+                map.setView([latitude, longitude], 15);
+                marker.setLatLng([latitude, longitude]);
+                document.getElementById('lat').value = latitude;
+                document.getElementById('lng').value = longitude;
+            });
+        }
+
+        marker.on('dragend', function (e) {
+            const position = marker.getLatLng();
+            document.getElementById('lat').value = position.lat;
+            document.getElementById('lng').value = position.lng;
+        });
+
+        async function init() {
+            try {
+                const catRes = await API.getCategories();
+                const sel = document.getElementById('category_id');
+                catRes.data.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.innerText = c.name;
+                    sel.appendChild(opt);
+                });
+            } catch (err) {
+                console.error('Failed to load categories');
+            }
+        }
+        init();
+
+        document.getElementById('report-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.innerText = 'Submitting...';
+            btn.disabled = true;
+
+            try {
+                const details = {
+                    category_id: document.getElementById('category_id').value,
+                    title: document.getElementById('title').value,
+                    description: document.getElementById('description').value,
+                    latitude: document.getElementById('lat').value,
+                    longitude: document.getElementById('lng').value,
+                    address: document.getElementById('address').value
+                };
+
+                const res = await API.createComplaint(details);
+
+                // Upload images if any
+                const files = document.getElementById('images').files;
+                if (files.length > 0) {
+                    const formData = new FormData();
+                    for (let i = 0; i < files.length; i++) {
+                        formData.append('images', files[i]);
+                    }
+                    formData.append('image_type', 'ISSUE');
+
+                    await fetchAPI(`/complaints/${res.data.id}/images`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                alert('Complaint submitted successfully! Your Code: ' + res.data.code);
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                alert(err.message);
+                btn.innerText = 'Submit Complaint';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

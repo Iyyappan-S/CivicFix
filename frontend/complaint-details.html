@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Complaint Details - CivicFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        .details-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .details-panel {
+            padding: 1.5rem;
+        }
+
+        .details-panel h3 {
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: var(--gray);
+        }
+
+        .info-value {
+            font-weight: 600;
+            text-align: right;
+        }
+
+        #map {
+            height: 250px;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+        }
+
+        .history-list {
+            list-style: none;
+        }
+
+        .history-list li {
+            margin-bottom: 1rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--primary);
+        }
+
+        .history-date {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .images-grid {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .images-grid img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="#" class="logo" id="back-link">CivicFix</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="details-grid">
+
+            <div class="main-info">
+                <div class="card details-panel" style="margin-bottom: 2rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 id="c-title">Complaint Title</h2>
+                        <span class="btn btn-primary" id="c-code" style="padding: 0.25rem 0.5rem;">C-CODE</span>
+                    </div>
+                    <p id="c-desc" style="color: var(--gray); margin-bottom: 1.5rem;">Description here...</p>
+
+                    <div class="info-row"><span class="info-label">Category:</span> <span class="info-value"
+                            id="c-cat">Category</span></div>
+                    <div class="info-row"><span class="info-label">Priority:</span> <span class="info-value"
+                            id="c-priority">MEDIUM</span></div>
+                    <div class="info-row"><span class="info-label">Status:</span> <span class="info-value"
+                            id="c-status">SUBMITTED</span></div>
+                    <div class="info-row"><span class="info-label">Submitted By:</span> <span class="info-value"
+                            id="c-citizen">Name</span></div>
+                    <div class="info-row"><span class="info-label">Department:</span> <span class="info-value"
+                            id="c-dept">Unassigned</span></div>
+                    <div class="info-row"><span class="info-label">Officer:</span> <span class="info-value"
+                            id="c-officer">Unassigned</span></div>
+
+                    <div id="c-images" class="images-grid"></div>
+                </div>
+
+                <div class="card details-panel">
+                    <h3>Status History</h3>
+                    <ul class="history-list" id="c-history">
+                        <li>Loading...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="sidebar-info">
+                <div class="card details-panel">
+                    <h3>Location</h3>
+                    <div id="map"></div>
+                    <p id="c-address" style="font-size: 0.9rem;"></p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal for viewing full images -->
+    <div id="img-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
+        <span onclick="closeImg()"
+            style="position:absolute; top:20px; right:30px; color:white; font-size:30px; cursor:pointer;">&times;</span>
+        <img id="full-img" style="max-width:90%; max-height:90%;">
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+
+        // Back link logic
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user) {
+            const link = document.getElementById('back-link');
+            if (user.role === 'ADMIN') link.href = 'admin/dashboard.html';
+            else if (user.role === 'OFFICER') link.href = 'officer/dashboard.html';
+            else link.href = 'citizen/dashboard.html';
+        }
+
+        let map, marker;
+        function initMap(lat, lng) {
+            map = L.map('map').setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            marker = L.marker([lat, lng]).addTo(map);
+        }
+
+        async function loadDetails() {
+            try {
+                const res = await API.getComplaint(id);
+                const c = res.data;
+
+                document.getElementById('c-title').innerText = c.title;
+                document.getElementById('c-code').innerText = c.complaint_code;
+                document.getElementById('c-desc').innerText = c.description;
+                document.getElementById('c-cat').innerText = c.category_name;
+                document.getElementById('c-priority').innerText = c.priority || 'MEDIUM';
+                document.getElementById('c-status').innerText = c.status;
+                document.getElementById('c-citizen').innerText = c.citizen_name || 'Anonymous';
+                document.getElementById('c-dept').innerText = c.department_name || 'Unassigned';
+                document.getElementById('c-officer').innerText = c.officer_name || 'Unassigned';
+                document.getElementById('c-address').innerText = c.address || 'Address not provided.';
+
+                if (c.latitude && c.longitude) {
+                    initMap(c.latitude, c.longitude);
+                } else {
+                    document.getElementById('map').style.display = 'none';
+                    document.getElementById('c-address').innerText += ' (Map loc missing)';
+                }
+
+                // Images
+                let imgHtml = '';
+                if (c.images && c.images.length > 0) {
+                    c.images.forEach(img => {
+                        const src = `http://localhost:5000/uploads/${img.image_path}`;
+                        imgHtml += `<img src="${src}" onclick="openImg('${src}')">`;
+                    });
+                    document.getElementById('c-images').innerHTML = imgHtml;
+                }
+
+                // History
+                let histHtml = '';
+                if (c.history && c.history.length > 0) {
+                    c.history.forEach(h => {
+                        const d = new Date(h.created_at).toLocaleString();
+                        histHtml += `
+                            <li>
+                                <strong>${h.old_status || 'NEW'} &rarr; ${h.new_status}</strong><br>
+                                <span class="history-date">${d} by ${h.changed_by_name}</span>
+                                ${h.note ? `<br><small>${h.note}</small>` : ''}
+                            </li>
+                        `;
+                    });
+                } else {
+                    histHtml = '<li>No history yet.</li>';
+                }
+                document.getElementById('c-history').innerHTML = histHtml;
+
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        if (id) loadDetails();
+        else document.body.innerHTML = '<h2>Invalid ID</h2>';
+
+        function openImg(src) {
+            document.getElementById('img-modal').style.display = 'flex';
+            document.getElementById('full-img').src = src;
+        }
+        function closeImg() {
+            document.getElementById('img-modal').style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
