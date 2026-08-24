@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://civicfix-7rc4.onrender.com/api';
 
 async function fetchAPI(endpoint, options = {}) {
     const token = localStorage.getItem('token');

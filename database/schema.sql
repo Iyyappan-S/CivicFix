@@ -1,5 +1,5 @@
 CREATE DATABASE IF NOT EXISTS civicfix;
-USE civicfix;
+USE defaultdb;
 
 -- Users Table (Citizens, Officers, Admins)
 CREATE TABLE IF NOT EXISTS users (

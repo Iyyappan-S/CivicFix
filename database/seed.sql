@@ -1,4 +1,4 @@
-USE civicfix;
+USE defaultdb;
 
 -- Insert Departments
 INSERT IGNORE INTO departments (id, name, description) VALUES
