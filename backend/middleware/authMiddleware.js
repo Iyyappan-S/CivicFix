@@ -5,7 +5,6 @@ const authMiddleware = (req, res, next) => {
     if (token && token.startsWith('Bearer ')) {
         token = token.slice(7, token.length);
     }
-
     if (!token) {
         return res.status(401).json({ status: 'error', message: 'Unauthorized access. Token is missing.' });
     }
