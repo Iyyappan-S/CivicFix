@@ -3,7 +3,6 @@ const db = require('../config/db');
 function generateComplaintCode() {
     return 'CF-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
 }
-
 exports.createComplaint = async (req, res, next) => {
     try {
         const { category_id, title, description, latitude, longitude, address } = req.body;
@@ -16,13 +15,11 @@ exports.createComplaint = async (req, res, next) => {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [code, citizen_id, category_id, title, description, latitude || null, longitude || null, address || null]
         );
-
         res.status(201).json({ status: 'success', data: { id: result.insertId, code }, message: 'Complaint registered successfully' });
     } catch (error) {
         next(error);
     }
 };
-
 exports.getComplaints = async (req, res, next) => {
     try {
         let query = `
@@ -35,7 +32,6 @@ exports.getComplaints = async (req, res, next) => {
             WHERE 1=1
         `;
         let params = [];
-
         if (req.user.role === 'CITIZEN') {
             query += ` AND c.citizen_id = ?`;
             params.push(req.user.id);
@@ -43,7 +39,6 @@ exports.getComplaints = async (req, res, next) => {
             query += ` AND c.officer_id = ?`;
             params.push(req.user.id);
         }
-
         if (req.query.status) {
             query += ` AND c.status = ?`;
             params.push(req.query.status);
